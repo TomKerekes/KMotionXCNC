@@ -40,6 +40,7 @@ export interface Machine  {
   defaultUnit: UserUnit
   description: string
   axes: Axis[]
+  actuators: Actuator[]
   tplanner: TPlanner
   actions: Action[]
   specialActions: Action[]
@@ -72,6 +73,22 @@ export class TPlanner {
   lookahead: number
   collineartolerance: number | string
   facetangle: number
+  // KMotion 5.5.1: the 3rd Order (jerk limited) planner and its options
+  thirdOrder: boolean
+  cubicKnots: boolean
+  actuatorLimits: boolean
+  logSegments: boolean
+}
+
+// Limits of one motor (actuator slot 0-7) for the Actuator Space Limits option. Stored like the
+// axes: scale in counts per inch, speeds in inch/sec, inch/sec², inch/sec³; or per degree when the
+// slot is rotary (degrees), in which case nothing is converted for display
+export class Actuator {
+  scale: number | string
+  maxVel: number | string
+  maxAccel: number | string
+  maxJerk: number | string
+  degrees: boolean
 }
 
 @Injectable()
@@ -119,6 +136,7 @@ export class SettingsService extends JsonFileStore<Machine>{
     machine.dimZ = newValue.dimZ || 0
     machine.defaultUnit = newValue.defaultUnit || 'mm'
     machine.axes = newValue.axes || SettingsService.axesArr()
+    machine.actuators = SettingsService.actuatorsArr(newValue.actuators)
     machine.tplanner = newValue.tplanner || new TPlanner()
     machine.actions = SettingsService.actionsArr(newValue.actions, SettingsService.mcodes)
     machine.specialActions = SettingsService.actionsArr(newValue.specialActions, SettingsService.mcodesSpecial)
@@ -127,6 +145,13 @@ export class SettingsService extends JsonFileStore<Machine>{
     return machine
   }
 
+  private static actuatorsArr(existing?: Actuator[]): Actuator[] {
+    const actuators = (existing || []).slice(0, 8)
+    while (actuators.length < 8) {
+      actuators.push(new Actuator())
+    }
+    return actuators
+  }
   private static axesArr(): Axis[] {
     const axes = []
     const axisNames = ['X', 'Y', 'Z', 'A', 'B', 'C']
